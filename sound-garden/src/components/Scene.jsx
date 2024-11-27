@@ -18,12 +18,12 @@ export default function Scene() {
     <Tree position={[0, -1, 3]} />
     <Tree position={[0, -1.7, 6]} />
 
-    <ambientLight intensity={ 1 } />
+    <ambientLight intensity={1} />
     <directionalLight
-      position={ [ 1, 3, 1.8] }
+      position={[ 1, 3, 1.8]}
       intensity={ 4 }
       castShadow
-      shadow-mapSize={ [1024 * 3, 1024 * 3] }
+      shadow-mapSize={[1024 * 3, 1024 * 3]}
       shadow-camera-top={ 4 }
       shadow-camera-right={ 4 }
       shadow-camera-bottom={ -3 }
