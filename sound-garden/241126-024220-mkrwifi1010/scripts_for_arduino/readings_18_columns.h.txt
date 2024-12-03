@@ -1,0 +1,110 @@
+// //////////// GETTING TEST READINGS FOR 18 COLUMNS ////////////////
+// #include <Arduino.h>
+
+// // First multiplexer (connected to A0) - handles rows and second set of columns
+// const byte mux1_s0 = A4;  // Control pins for first multiplexer
+// const byte mux1_s1 = A3;
+// const byte mux1_s2 = A2;
+// const byte mux1_s3 = A1;
+// const byte mux1_sig = A0; // Signal pin
+
+// // Second multiplexer (connected to D8) - handles first set of columns
+// const byte mux2_s0 = 12;  // Control pins for second multiplexer
+// const byte mux2_s1 = 11;
+// const byte mux2_s2 = 10;
+// const byte mux2_s3 = 9;
+// const byte mux2_sig = 8;  // Signal pin
+
+// // Mux channel configuration
+// const boolean muxChannel[16][4] = {
+//     {0, 0, 0, 0}, // Channel 0
+//     {1, 0, 0, 0}, // Channel 1
+//     {0, 1, 0, 0}, // Channel 2
+//     {1, 1, 0, 0}, // Channel 3
+//     {0, 0, 1, 0}, // Channel 4
+//     {1, 0, 1, 0}, // Channel 5
+//     {0, 1, 1, 0}, // Channel 6
+//     {1, 1, 1, 0}, // Channel 7
+//     {0, 0, 0, 1}, // Channel 8
+//     {1, 0, 0, 1}, // Channel 9
+//     {0, 1, 0, 1}, // Channel 10
+//     {1, 1, 0, 1}, // Channel 11
+//     {0, 0, 1, 1}, // Channel 12
+//     {1, 0, 1, 1}, // Channel 13
+//     {0, 1, 1, 1}, // Channel 14
+//     {1, 1, 1, 1}  // Channel 15
+// };
+
+// // Function declarations
+// int readMux1(byte channel);
+// int readMux2(byte channel);
+
+// void setup() {
+//   // Configure pins for first multiplexer
+//   pinMode(mux1_s0, OUTPUT);
+//   pinMode(mux1_s1, OUTPUT);
+//   pinMode(mux1_s2, OUTPUT);
+//   pinMode(mux1_s3, OUTPUT);
+//   pinMode(mux1_sig, INPUT);
+
+//   // Configure pins for second multiplexer
+//   pinMode(mux2_s0, OUTPUT);
+//   pinMode(mux2_s1, OUTPUT);
+//   pinMode(mux2_s2, OUTPUT);
+//   pinMode(mux2_s3, OUTPUT);
+//   pinMode(mux2_sig, INPUT);
+
+//   Serial.begin(115200);
+//   Serial.println("Starting column readings test...");
+//   Serial.println("First 9 columns (Mux2, C8-C0), then next 9 columns (Mux1, C11-C3)");
+//   Serial.println();
+// }
+
+// void loop() {
+//   // First 9 columns from multiplexer 2 (C8 down to C0)
+//   Serial.println("Mux2 Columns (C8-C0):");
+//   for (int col = 8; col >= 0; col--) {
+//     int colValue = readMux2(col);
+
+//     Serial.print("C");
+//     Serial.print(col);
+//     Serial.print(": ");
+//     Serial.print(colValue);
+//     Serial.print("\t");
+//   }
+//   Serial.println();
+
+//   // Next 9 columns from multiplexer 1 (C11 down to C3)
+//   Serial.println("Mux1 Columns (C11-C3):");
+//   for (int col = 11; col >= 3; col--) {
+//     int colValue = readMux1(col);
+
+//     Serial.print("C");
+//     Serial.print(col);
+//     Serial.print(": ");
+//     Serial.print(colValue);
+//     Serial.print("\t");
+//   }
+//   Serial.println();
+//   Serial.println(); // Extra line for readability
+
+//   delay(1000);  // Wait a second before next reading
+// }
+
+// // Read from first multiplexer (connected to A0)
+// int readMux1(byte channel) {
+//   byte controlPin[] = {mux1_s0, mux1_s1, mux1_s2, mux1_s3};
+//   for (int i = 0; i < 4; i++) {
+//     digitalWrite(controlPin[i], muxChannel[channel][i]);
+//   }
+//   return analogRead(mux1_sig);
+// }
+
+// // Read from second multiplexer (connected to D8)
+// int readMux2(byte channel) {
+//   byte controlPin[] = {mux2_s0, mux2_s1, mux2_s2, mux2_s3};
+//   for (int i = 0; i < 4; i++) {
+//     digitalWrite(controlPin[i], muxChannel[channel][i]);
+//   }
+//   return analogRead(mux2_sig);
+// }
