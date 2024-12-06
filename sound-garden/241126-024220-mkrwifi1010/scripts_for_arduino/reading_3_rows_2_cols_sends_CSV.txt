@@ -1,0 +1,95 @@
+//////////////// TEST READINGS FOR 3 ROWS AND 2 COLS ///////////////
+//// but readMat is called on loop instead of triggered by a person
+
+// ✅ continuously sends data instead of reading only when triggered by serial input '0'
+// ✅ machine-readable CSV format instead of verbose human-readable output
+// ✅ Baseline subtraction: difference calculated during output VS difference calculated during reading
+// ✅ performs calibration silently
+// 👾 New version automatically sends data every 100ms in a CSV format, while the original only sends data when requested through serial input
+
+#include <Arduino.h>
+
+// Pin definitions
+const int ROW_PINS[] = {A0, A1, A2};  // Analog input pins for rows
+const int COL_PINS[] = {2, 3};        // Digital output pins for columns
+const int NUM_ROWS = 3;
+const int NUM_COLS = 2;
+
+// Arrays to store sensor values
+int currentValues[3][2];    // Current readings
+int baselineValues[3][2];   // Calibration baseline
+const int NUM_CALIBRATION_SAMPLES = 20;
+
+void calibrate();
+void readMat();
+
+void setup() {
+  Serial.begin(9600);
+
+  // Set pin modes
+  for (int r = 0; r < NUM_ROWS; r++) {
+    pinMode(ROW_PINS[r], INPUT); // Analog
+  }
+
+  for (int c = 0; c < NUM_COLS; c++) {
+    pinMode(COL_PINS[c], OUTPUT);
+    digitalWrite(COL_PINS[c], LOW);  // Start with all columns LOW
+  }
+
+  delay(1000);  // Allow serial to initialize
+  Serial.println("Starting up...");
+  calibrate();
+}
+
+void loop() {
+  readMat();
+
+  // Send sensor readings in CSV format
+  for (int r = 0; r < NUM_ROWS; r++) {
+    for (int c = 0; c < NUM_COLS; c++) {
+      Serial.print(currentValues[r][c]);
+      if (c < NUM_COLS - 1) Serial.print(","); // Add comma between columns
+    }
+    if (r < NUM_ROWS - 1) Serial.print(","); // Add comma between rows
+  }
+  Serial.println();  // Newline after each reading
+
+  delay(20); // ⚪️ Adjust delay as needed
+  // from 100, to 20, to completely removing
+}
+
+void calibrate() {
+  for (int r = 0; r < NUM_ROWS; r++) {
+    for (int c = 0; c < NUM_COLS; c++) {
+      baselineValues[r][c] = 0;
+    }
+  }
+
+  for (int sample = 0; sample < NUM_CALIBRATION_SAMPLES; sample++) {
+    for (int c = 0; c < NUM_COLS; c++) {
+      digitalWrite(COL_PINS[c], HIGH);
+      delay(10);
+      for (int r = 0; r < NUM_ROWS; r++) {
+        baselineValues[r][c] += analogRead(ROW_PINS[r]);
+      }
+      digitalWrite(COL_PINS[c], LOW);
+    }
+  }
+
+  for (int r = 0; r < NUM_ROWS; r++) {
+    for (int c = 0; c < NUM_COLS; c++) {
+      baselineValues[r][c] /= NUM_CALIBRATION_SAMPLES;
+    }
+  }
+}
+
+void readMat() {
+  for (int c = 0; c < NUM_COLS; c++) {
+    digitalWrite(COL_PINS[c], HIGH);
+    delay(10);
+    for (int r = 0; r < NUM_ROWS; r++) {
+      currentValues[r][c] = analogRead(ROW_PINS[r]) - baselineValues[r][c];
+    }
+    digitalWrite(COL_PINS[c], LOW);
+  }
+}

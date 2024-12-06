@@ -1,22 +1,80 @@
-// Path: src/components/Scene.jsx
-
 import Tree from './Tree';
 import { SoftShadows, OrbitControls, MapControls } from "@react-three/drei";
 
 export default function Scene() {
+  const numberOfTrees = 36;
+
+  const getOuterTreeScale = (index) => {
+    if (index < 9) {
+      return 5;
+    }
+    return 1.5;
+  };
+
+  const generateTrees = () => {
+    const trees = [];
+    const firstRadius = 9;
+    const innerRadius = 14;
+    const outerRadius = 20; // Radius of the circle
+
+    // FIRST (INNERMOST) CIRCLE OF TREES
+    for (let i = 0; i < numberOfTrees; i++) {
+      const angle = (i * 2 * Math.PI) / numberOfTrees;
+      const x = firstRadius * Math.cos(angle);
+      const z = firstRadius * Math.sin(angle);
+      const y = -1.5;
+
+      trees.push(
+        <Tree
+          key={`first-${i}`}
+          position={[x, y, z]}
+          scale={1.25}
+        />
+      );
+    }
+
+    // INNER CIRCLE OF TREES
+    for (let i = 0; i < numberOfTrees; i++) {
+      const angle = (i * 2 * Math.PI) / numberOfTrees;
+      const x = innerRadius * Math.cos(angle);
+      const z = innerRadius * Math.sin(angle);
+      const y = -1.5;
+
+      trees.push(
+        <Tree
+          key={`inner-${i}`}
+          position={[x, y, z]}
+          scale={1.25}
+        />
+      );
+    }
+
+    // OUTER CIRCLE OF TREES
+    for (let i = 0; i < numberOfTrees; i++) {
+      // Calculate angle for each tree (in radians)
+      const angle = (i * 2 * Math.PI) / numberOfTrees;
+
+      // Calculate position using trigonometry
+      const x = outerRadius * Math.cos(angle);
+      const z = outerRadius * Math.sin(angle);
+      const y = -1.5; // Consistent height for all trees
+
+      trees.push(
+        <Tree
+          key={i}
+          position={[x, y, z]}
+          scale={getOuterTreeScale(i)}
+        />
+      );
+    }
+    return trees;
+  }
   return <>
     <SoftShadows size={ 80 } samples={ 20 } focus={ 0 } />
     <OrbitControls />
     <MapControls />
 
-    {/* TODO for each function that places the trees in different places */}
-
-    <Tree position={[-1, -2.5, -8]} />
-    <Tree position={[-2, -1.5 , -6]} />
-    <Tree position={[0, -1.2 , -3]} />
-    <Tree position={[0, -1.5 , 0]} />
-    <Tree position={[0, -1, 3]} />
-    <Tree position={[0, -1.7, 6]} />
+    {generateTrees()}
 
     <ambientLight intensity={1} />
     <directionalLight

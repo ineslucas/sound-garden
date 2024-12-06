@@ -136,3 +136,5 @@ void readMat() {
     Serial.println();
   }
 }
+
+// Map serial reading to a range we need, or use constrain();

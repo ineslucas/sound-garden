@@ -7,17 +7,25 @@
 // ✅ performs calibration silently
 // 👾 New version automatically sends data every 100ms in a CSV format, while the original only sends data when requested through serial input
 
+
+/////// TESTING with 9 sensors and multiplexer ///////
 #include <Arduino.h>
 
 // Pin definitions
 const int ROW_PINS[] = {A0, A1, A2};  // Analog input pins for rows
-const int COL_PINS[] = {2, 3};        // Digital output pins for columns
-const int NUM_ROWS = 3;
-const int NUM_COLS = 2;
+const int MUX_SIG = 8;    // Multiplexer signal pin
+const int MUX_S3 = 9;     // Multiplexer control pin S3
+const int MUX_S2 = 10;    // Multiplexer control pin S2
+const int MUX_S1 = 11;    // Multiplexer control pin S1
+const int MUX_S0 = 12;    // Multiplexer control pin S0
 
+const int NUM_ROWS = 3;
+const int NUM_COLS = 9;
+
+//// 👾 PROBABLY NEEDS CHANGES /////
 // Arrays to store sensor values
-int currentValues[3][2];    // Current readings
-int baselineValues[3][2];   // Calibration baseline
+int currentValues[3][9];    // Current readings
+int baselineValues[3][9];   // Calibration baseline
 const int NUM_CALIBRATION_SAMPLES = 20;
 
 void calibrate();
@@ -31,16 +39,29 @@ void setup() {
     pinMode(ROW_PINS[r], INPUT); // Analog
   }
 
-  for (int c = 0; c < NUM_COLS; c++) {
-    pinMode(COL_PINS[c], OUTPUT);
-    digitalWrite(COL_PINS[c], LOW);  // Start with all columns LOW
-  }
+  // Setup multiplexer pins
+  pinMode(MUX_SIG, OUTPUT);
+  pinMode(MUX_S3, OUTPUT);
+  pinMode(MUX_S2, OUTPUT);
+  pinMode(MUX_S1, OUTPUT);
+  pinMode(MUX_S0, OUTPUT);
+  digitalWrite(MUX_SIG, LOW);  // Start with signal LOW
 
   delay(1000);  // Allow serial to initialize
   Serial.println("Starting up...");
   calibrate();
 }
 
+// 🍑 Helper function to set multiplexer channel
+  // handle the 4-bit channel selection
+void setMuxChannel(int channel) {
+  digitalWrite(MUX_S0, channel & 0x01);
+  digitalWrite(MUX_S1, (channel >> 1) & 0x01);
+  digitalWrite(MUX_S2, (channel >> 2) & 0x01);
+  digitalWrite(MUX_S3, (channel >> 3) & 0x01);
+}
+
+//// 👾 LOOP FUNCTION UNCHANGED?
 void loop() {
   readMat();
 
@@ -54,7 +75,8 @@ void loop() {
   }
   Serial.println();  // Newline after each reading
 
-  delay(100); // Adjust delay as needed
+  delay(20); // ⚪️ Adjust delay as needed
+  // from 100, to 20, to completely removing
 }
 
 void calibrate() {
@@ -66,15 +88,17 @@ void calibrate() {
 
   for (int sample = 0; sample < NUM_CALIBRATION_SAMPLES; sample++) {
     for (int c = 0; c < NUM_COLS; c++) {
-      digitalWrite(COL_PINS[c], HIGH);
+      setMuxChannel(c);
+      digitalWrite(MUX_SIG, HIGH);
       delay(10);
       for (int r = 0; r < NUM_ROWS; r++) {
         baselineValues[r][c] += analogRead(ROW_PINS[r]);
       }
-      digitalWrite(COL_PINS[c], LOW);
+      digitalWrite(MUX_SIG, LOW);
     }
   }
 
+  // Averaging code?
   for (int r = 0; r < NUM_ROWS; r++) {
     for (int c = 0; c < NUM_COLS; c++) {
       baselineValues[r][c] /= NUM_CALIBRATION_SAMPLES;
@@ -84,154 +108,15 @@ void calibrate() {
 
 void readMat() {
   for (int c = 0; c < NUM_COLS; c++) {
-    digitalWrite(COL_PINS[c], HIGH);
+    setMuxChannel(c);
+    digitalWrite(MUX_SIG, HIGH);
     delay(10);
     for (int r = 0; r < NUM_ROWS; r++) {
       currentValues[r][c] = analogRead(ROW_PINS[r]) - baselineValues[r][c];
     }
-    digitalWrite(COL_PINS[c], LOW);
+    digitalWrite(MUX_SIG, LOW); // MUX_SIG instead of COL_PINS[c]
   }
 }
-
-
-// ////////////// TEST READINGS FOR 3 ROWS AND 2 COLS ///////////////
-// #include <Arduino.h>
-
-// // Pin definitions
-// const int ROW_PINS[] = {A0, A1, A2};  // Analog input pins for rows
-// const int COL_PINS[] = {2, 3};        // Digital output pins for columns
-// const int NUM_ROWS = 3;
-// const int NUM_COLS = 2;
-
-// // Arrays to store sensor values
-// int currentValues[3][2];    // Current readings
-// int baselineValues[3][2];   // Calibration baseline
-// const int NUM_CALIBRATION_SAMPLES = 20;
-
-// // Function declarations
-// void calibrate();
-// void readMat();
-
-// void setup() {
-//   // Init Serial
-//   Serial.begin(9600); // prev using 112500 baud rate
-
-//   // We need to loop through each of the 3 rows
-//   // then set row 0 as Analog Read
-//   // then set column 0 as HIGH digital out
-//   // then repeat the process using the 2 nested for loops
-
-//   // Set pin modes
-//   for (int r = 0; r < NUM_ROWS; r++) {
-//     pinMode(ROW_PINS[r], INPUT); // Analog
-//     // Pin value still needs to be read later on.
-//     // This just sets pin X as Input or Output
-//   }
-
-//   for (int c = 0; c < NUM_COLS; c++) {
-//     pinMode(COL_PINS[c], OUTPUT);
-//     digitalWrite(COL_PINS[c], LOW);  // Start with all columns LOW
-//   }
-
-//   // delay(1000);  // Add a delay to allow serial to initialize
-//   Serial.println("Starting up...");  // Add this to verify serial is working
-
-//   // Initial calibration
-//   calibrate(); // DUPLICATED? Nope just an initial call
-// }
-
-// int inByte = 0; // Initializing inByte and setting to 0
-
-// void loop() {
-//   if (Serial.available() > 0) {
-//     int inByte = Serial.read();
-//     if (inByte == '0') {  // Changed to char '0' (ASCII 48)
-//       readMat();
-//     } else if (inByte == 'c') {  // Added option to recalibrate
-//       calibrate();
-//     }
-//   }
-// }
-
-// void calibrate() {
-//   Serial.println("Starting calibration...");
-
-//   // Reset baseline values
-//   for (int r = 0; r < NUM_ROWS; r++) {
-//     for (int c = 0; c < NUM_COLS; c++) {
-//       baselineValues[r][c] = 0;
-//     }
-//   }
-
-//   // Take multiple samples
-//   for (int sample = 0; sample < NUM_CALIBRATION_SAMPLES; sample++) {
-//     for (int c = 0; c < NUM_COLS; c++) {
-//       // Activate one column at a time
-//       digitalWrite(COL_PINS[c], HIGH);
-//       delay(10);  // Small delay for stability
-
-//       // Read all rows for this column
-//       for (int r = 0; r < NUM_ROWS; r++) {
-//         baselineValues[r][c] += analogRead(ROW_PINS[r]);
-//         // Creating a sum
-//       }
-
-//       digitalWrite(COL_PINS[c], LOW);
-//       // setting the column pins back to LOW, as we're done with calibration
-//     }
-//   }
-
-//   // Calculate averages
-//   for (int r = 0; r < NUM_ROWS; r++) {
-//     for (int c = 0; c < NUM_COLS; c++) {
-//       baselineValues[r][c] /= NUM_CALIBRATION_SAMPLES;
-//       Serial.print("Baseline R");
-//       Serial.print(r);
-//       Serial.print("C");
-//       Serial.print(c);
-//       Serial.print(": ");
-//       Serial.println(baselineValues[r][c]);
-//     }
-//   }
-
-//   Serial.println("Calibration complete!");
-// }
-
-
-// void readMat() {
-//   // Read all sensors
-//   for (int c = 0; c < NUM_COLS; c++) {
-//     // Activate one column at a time
-//     digitalWrite(COL_PINS[c], HIGH);
-//     delay(10);  // Small delay for stability
-
-//     // Read all rows for this column
-//     for (int r = 0; r < NUM_ROWS; r++) {
-//       currentValues[r][c] = analogRead(ROW_PINS[r]);
-//     }
-
-//     digitalWrite(COL_PINS[c], LOW);
-//   }
-
-//   // Print the readings
-//   Serial.println("\n--- Current Readings ---");
-//   for (int r = 0; r < NUM_ROWS; r++) {
-//     for (int c = 0; c < NUM_COLS; c++) {
-//       int difference = currentValues[r][c] - baselineValues[r][c];
-
-//       Serial.print("R");
-//       Serial.print(r);
-//       Serial.print("C");
-//       Serial.print(c);
-//       Serial.print(": ");
-//       Serial.print(currentValues[r][c]);
-//       Serial.print(" (diff: ");
-//       Serial.print(difference);
-//       Serial.print(")  ");
-//     }
-//     Serial.println();
-//   }
-// }
 
 
 // Map serial reading to a range we need, or use constrain();

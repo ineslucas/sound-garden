@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import Scene from './components/Scene.jsx';
 // import P5sketch from './components/p5sketch.jsx';
 // import CircleSectionsP5 from './components/CircleSectionsP5.jsx';
-import P5SketchWrapper from './components/P5SketchWrapper.jsx';
+// import P5SketchWrapper from './components/P5SketchWrapper.jsx';
 
 function App() {
   const cameraRotation = [0, 1.5, 0];
@@ -12,7 +12,7 @@ function App() {
 
   return (
     <>
-      <P5SketchWrapper/>
+      {/* <P5SketchWrapper/> */}
       {/* <P5sketch/>
       <CircleSectionsP5/> */}
 
