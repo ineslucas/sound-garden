@@ -6,6 +6,6 @@ Touch Grass is a collective experience about connection to the fabric of democra
 More succintely, "Touch Grass" invites participants to collectively transcend the noise of real-time news by physically connecting to "grass," revealing a serene pond scene—a metaphor for unity and the transformative power of collaboration in society.
 
 <img width="1078" alt="image" src="https://github.com/user-attachments/assets/5530d4eb-0d4f-4d6b-aefc-8653b8fb99f6">
-
-<img width="1073" alt="image" src="https://github.com/user-attachments/assets/bf28e516-c880-44e9-8f77-d8e2c7cedf48">
 <img width="1077" alt="image" src="https://github.com/user-attachments/assets/10f7cefe-a4ef-4b81-a0b3-b9b8f2a88a49">
+
+It's a projection influenced by a home made force sensing resistor all around a bin. Inside the bin there's a projector.
