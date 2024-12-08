@@ -8,25 +8,94 @@
 // 👾 New version automatically sends data every 100ms in a CSV format, while the original only sends data when requested through serial input
 
 
-/////// TESTING with 9 sensors and multiplexer ///////
+/////// TESTING with 36 + 3 sensors and 3 multiplexers ///////
 #include <Arduino.h>
 
 // Pin definitions
 const int ROW_PINS[] = {A0, A1, A2};  // Analog input pins for rows
-const int MUX_SIG = 8;    // Multiplexer signal pin
-const int MUX_S3 = 9;     // Multiplexer control pin S3
-const int MUX_S2 = 10;    // Multiplexer control pin S2
-const int MUX_S1 = 11;    // Multiplexer control pin S1
-const int MUX_S0 = 12;    // Multiplexer control pin S0
+
+// Multiplexer MTL (Top Left) - Controls columns 1-13
+const int MTL_SIG = 8;    // Signal pin
+const int MTL_S3 = 9;     // Control pins
+const int MTL_S2 = 10;
+const int MTL_S1 = 11;
+const int MTL_S0 = 12;
+
+// Multiplexer MBL (Bottom Left) - Controls columns 14-27
+const int MBL_SIG = A3;   // Signal pin
+const int MBL_S3 = A4;    // Control pins
+const int MBL_S2 = A5;
+const int MBL_S1 = A6;
+const int MBL_S0 = A7;
+
+// Multiplexer MTR (Top Right) - Controls columns 28-36
+const int MTR_SIG = 7;    // Signal pin
+const int MTR_S3 = 6;     // Control pins
+const int MTR_S2 = 5;
+const int MTR_S1 = 4;
+const int MTR_S0 = 3;
 
 const int NUM_ROWS = 3;
-const int NUM_COLS = 9;
+const int NUM_COLS = 36;
 
 //// 👾 PROBABLY NEEDS CHANGES /////
 // Arrays to store sensor values
-int currentValues[3][9];    // Current readings
-int baselineValues[3][9];   // Calibration baseline
-const int NUM_CALIBRATION_SAMPLES = 20;
+int currentValues[3][NUM_COLS];    // Current readings
+int baselineValues[3][NUM_COLS];   // Calibration baseline
+const int NUM_CALIBRATION_SAMPLES = 20; // could be increased
+
+// Helper function to determine which multiplexer and channel to use for a given column
+struct MuxInfo {
+    int sigPin;
+    int s3Pin;
+    int s2Pin;
+    int s1Pin;
+    int s0Pin;
+    int channel;
+};
+
+// Maps a column (1-36) to the correct multiplexer and channel
+MuxInfo getMuxInfo(int col) {
+    MuxInfo info;
+
+    if (col < 13) {  // Columns 1-13 on MTL
+        info = {MTL_SIG, MTL_S3, MTL_S2, MTL_S1, MTL_S0, 0};
+        // Map columns 1-9 to C15-C7
+        if (col < 9) {
+            info.channel = 15 - col;
+        }
+        // Map columns 10-13 to C3-C0
+        else {
+            info.channel = 3 - (col - 9);
+        }
+    }
+    else if (col < 27) {  // Columns 14-27 on MBL
+        info = {MBL_SIG, MBL_S3, MBL_S2, MBL_S1, MBL_S0, 0};
+        // Map columns 14-18 to C15-C11
+        if (col < 19) {
+            info.channel = 15 - (col - 14);
+        }
+        // Map columns 19-27 to C10-C2
+        else {
+            info.channel = 10 - (col - 19);
+        }
+    }
+    else {  // Columns 28-36 on MTR
+        info = {MTR_SIG, MTR_S3, MTR_S2, MTR_S1, MTR_S0, 0};
+        // Map columns 28-36 to C15-C7
+        info.channel = 15 - (col - 28);
+    }
+
+    return info;
+}
+
+void setMuxChannel(const MuxInfo& mux, int channel) {
+    digitalWrite(mux.s0Pin, channel & 0x01);
+    digitalWrite(mux.s1Pin, (channel >> 1) & 0x01);
+    digitalWrite(mux.s2Pin, (channel >> 2) & 0x01);
+    digitalWrite(mux.s3Pin, (channel >> 3) & 0x01);
+}
+// Does this allow all multiplexers to be running at the same time?
 
 void calibrate();
 void readMat();
@@ -34,44 +103,82 @@ void readMat();
 void setup() {
   Serial.begin(9600);
 
-  // Set pin modes
+  // Set pin modes for rows
   for (int r = 0; r < NUM_ROWS; r++) {
     pinMode(ROW_PINS[r], INPUT); // Analog
   }
 
-  // Setup multiplexer pins
-  pinMode(MUX_SIG, OUTPUT);
-  pinMode(MUX_S3, OUTPUT);
-  pinMode(MUX_S2, OUTPUT);
-  pinMode(MUX_S1, OUTPUT);
-  pinMode(MUX_S0, OUTPUT);
-  digitalWrite(MUX_SIG, LOW);  // Start with signal LOW
+  // // Setup multiplexer pins
+  // pinMode(MUX_SIG, OUTPUT);
+  // pinMode(MUX_S3, OUTPUT);
+  // pinMode(MUX_S2, OUTPUT);
+  // pinMode(MUX_S1, OUTPUT);
+  // pinMode(MUX_S0, OUTPUT);
+  // digitalWrite(MUX_SIG, LOW);  // Start with signal LOW
+
+
+  // 🍑 SHOULD WE BE WRITING MTL_SIG, MBL_SIG, AND MTR_SIG AS digitalWrite(pin, LOW) like before?
+  // Configure all multiplexer pins
+  // MTL
+  pinMode(MTL_SIG, OUTPUT);
+  pinMode(MTL_S3, OUTPUT);
+  pinMode(MTL_S2, OUTPUT);
+  pinMode(MTL_S1, OUTPUT);
+  pinMode(MTL_S0, OUTPUT);
+
+  // MBL
+  pinMode(MBL_SIG, OUTPUT);
+  pinMode(MBL_S3, OUTPUT);
+  pinMode(MBL_S2, OUTPUT);
+  pinMode(MBL_S1, OUTPUT);
+  pinMode(MBL_S0, OUTPUT);
+
+  // MTR
+  pinMode(MTR_SIG, OUTPUT);
+  pinMode(MTR_S3, OUTPUT);
+  pinMode(MTR_S2, OUTPUT);
+  pinMode(MTR_S1, OUTPUT);
+  pinMode(MTR_S0, OUTPUT);
 
   delay(1000);  // Allow serial to initialize
-  Serial.println("Starting up...");
+    // 🍑 Removed from 3*36 - why?
+  Serial.println("Starting calibration...");
   calibrate();
 }
 
+// from 3*9 - remove?
 // 🍑 Helper function to set multiplexer channel
   // handle the 4-bit channel selection
-void setMuxChannel(int channel) {
-  digitalWrite(MUX_S0, channel & 0x01);
-  digitalWrite(MUX_S1, (channel >> 1) & 0x01);
-  digitalWrite(MUX_S2, (channel >> 2) & 0x01);
-  digitalWrite(MUX_S3, (channel >> 3) & 0x01);
-}
+// void setMuxChannel(int channel) {
+//   digitalWrite(MUX_S0, channel & 0x01);
+//   digitalWrite(MUX_S1, (channel >> 1) & 0x01);
+//   digitalWrite(MUX_S2, (channel >> 2) & 0x01);
+//   digitalWrite(MUX_S3, (channel >> 3) & 0x01);
+// }
 
 //// 👾 LOOP FUNCTION UNCHANGED?
 void loop() {
   readMat();
 
   // Send sensor readings in CSV format
-  for (int r = 0; r < NUM_ROWS; r++) {
-    for (int c = 0; c < NUM_COLS; c++) {
-      Serial.print(currentValues[r][c]);
-      if (c < NUM_COLS - 1) Serial.print(","); // Add comma between columns
+  // for (int r = 0; r < NUM_ROWS; r++) {
+  //   for (int c = 0; c < NUM_COLS; c++) {
+  //     Serial.print(currentValues[r][c]);
+  //     if (c < NUM_COLS - 1) Serial.print(","); // Add comma between columns
+  //   }
+  //   if (r < NUM_ROWS - 1) Serial.print(","); // Add comma between rows
+  // }
+
+  // NEW CODE for 3*36
+  // Output all values in order (row1,col1 -> row3,col1 -> row1,col2 etc.)
+  for (int c = 0; c < NUM_COLS; c++) {
+    for (int r = 0; r < NUM_ROWS; r++) {
+        Serial.print(currentValues[r][c]);
+        // Add comma if not the last value
+        if (!(r == NUM_ROWS-1 && c == NUM_COLS-1)) {
+            Serial.print(",");
+        }
     }
-    if (r < NUM_ROWS - 1) Serial.print(","); // Add comma between rows
   }
   Serial.println();  // Newline after each reading
 
@@ -88,13 +195,25 @@ void calibrate() {
 
   for (int sample = 0; sample < NUM_CALIBRATION_SAMPLES; sample++) {
     for (int c = 0; c < NUM_COLS; c++) {
-      setMuxChannel(c);
-      digitalWrite(MUX_SIG, HIGH);
-      delay(10);
+      // OLD CODE for 3*9
+      // setMuxChannel(c);
+      // digitalWrite(MUX_SIG, HIGH);
+      // delay(10);
+      // for (int r = 0; r < NUM_ROWS; r++) {
+      //   baselineValues[r][c] += analogRead(ROW_PINS[r]);
+      // }
+      // digitalWrite(MUX_SIG, LOW);
+
+      // NEW CODE for 3*36
+      MuxInfo mux = getMuxInfo(c);
+      setMuxChannel(mux, mux.channel);
+      digitalWrite(mux.sigPin, HIGH);
+      delay(1);  // Brief settling time
+
       for (int r = 0; r < NUM_ROWS; r++) {
-        baselineValues[r][c] += analogRead(ROW_PINS[r]);
+          baselineValues[r][c] += analogRead(ROW_PINS[r]);
       }
-      digitalWrite(MUX_SIG, LOW);
+      digitalWrite(mux.sigPin, LOW);
     }
   }
 
@@ -108,13 +227,28 @@ void calibrate() {
 
 void readMat() {
   for (int c = 0; c < NUM_COLS; c++) {
-    setMuxChannel(c);
-    digitalWrite(MUX_SIG, HIGH);
-    delay(10);
+    // OLD CODE for 3*9
+    // setMuxChannel(c);
+    // digitalWrite(MUX_SIG, HIGH);
+    // delay(10);
+    // for (int r = 0; r < NUM_ROWS; r++) {
+    //   // Clamping the values to 0 so that there's no negatives:
+    //   int diff = analogRead(ROW_PINS[r]) - baselineValues[r][c];
+    //   currentValues[r][c] = (diff < 0) ? 0 : diff;
+    // }
+    // digitalWrite(MUX_SIG, LOW); // MUX_SIG instead of COL_PINS[c]
+
+    // NEW CODE for 3*36
+    MuxInfo mux = getMuxInfo(c);
+    setMuxChannel(mux, mux.channel);
+    digitalWrite(mux.sigPin, HIGH);
+    delay(1);  // Brief settling time
+
     for (int r = 0; r < NUM_ROWS; r++) {
-      currentValues[r][c] = analogRead(ROW_PINS[r]) - baselineValues[r][c];
+        int diff = analogRead(ROW_PINS[r]) - baselineValues[r][c];
+        currentValues[r][c] = (diff < 0) ? 0 : diff;
     }
-    digitalWrite(MUX_SIG, LOW); // MUX_SIG instead of COL_PINS[c]
+    digitalWrite(mux.sigPin, LOW);
   }
 }
 
