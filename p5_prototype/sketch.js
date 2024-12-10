@@ -1,192 +1,123 @@
-// Initialize an array with 108 zeros - one for each pressure sensor
-let sensorValues = Array(108).fill(0);
-let inputBuffer = ''; // Buffer to store incomplete data
+// You're going to be my coding mentor and help me strategize.
+// I've built a home made pressure sensor. It provides 108 values from serial communication that are layed out in 3 circles. They are currently super well mapped in space in the testing_values_sketch_circles.js sketch.
+// The idea is for the points of the testing_values_sketch_circles.js sketch to visually correspond to a visual. Visual changes in the same place as the person presses the force sensing resistor, causing the value to increase. In this case, the opacity of the circle that corresponds to the physical sensor increases.
 
-// WebSerial connection variables
-let serial; // WebSerial object
-let port; // Port object
-let reader; // For reading the serial data stream
-let decoder = new TextDecoder(); // Decoder for incoming serial data, converts raw binary data to text
+// But actually what we want is to have 3 modes.
 
-const numberOfCircles = 36;
-const firstRadius = 130;  // Innermost circle
-const innerRadius = 200;  // Middle circle
-const outerRadius = 300;  // Outermost circle
+// - Text spirals
+// - Transition of text spirals into blue circle
+// - Blue circle
 
-// Constants for visualization
-const MAX_PRESSURE = 200;  // Maximum analog reading value
-  // 600
-const MIN_OPACITY = 30;     // Minimum opacity for circles
-const MAX_OPACITY = 255;    // Maximum opacity for circles
-const CIRCLE_SIZE = 20;     // Size of each circle
+// Eventually the idea is that if all the values in the serial communication are mapped to whether those spots of the circle are showing the text spirals scene or whether they're showing blue. And I want the appearance of blue to have a correlation to the physical reality.
+
+
+
+// I'm not sure if I'm explaining my vision well, so fell free to ask clarifying questions.
+
+//// ❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌
+
+////
+ ////// INCOMPLETE SKETCH //////
+                    //////
+                        //////
+
+      //// ❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌❌
+      // Check which one is at the HTML.
+
+
+
+
+// Headlines can also change every 15 seconds. Too fast to read, as are news these days.
+// Different fonts & colors for each headline.
+// Soup letter?
+
+// Array of headlines to be displayed in spiral
+let headlines = [
+  "Syrian Rebels Oust Assad, Seize Control of Damascus",
+  "Elon Musk-Led Effort to Cut Federal Workforce Risks Stifling Labor Market",
+  "Chiefs Offense Benefitting from Travis Kelce's New Signature Move: The Lateral",
+  "Giants Face Uncertainty Due to Injuries",
+  "Millions Urged to Stay at Home as Storm Darragh Hits",
+  "Kate Joined by Children as She Hosts Carol Service"
+];
+
+let xPos, yPos; // position of the text
+let font;
+// let txtSp; // Spiral text object
+let spiralTexts = []; // Array to hold multiple SpiralText objects
 
 function setup() {
   createCanvas(800, 800);
+  xPos = width/2; // Set initial position to center of canvas
+  yPos = height/2; // Might not be needed
+  font = loadFont('Arial Bold'); // Font
 
-  // Create a button to connect to the serial port
-  let connectButton = createButton("Connect to Serial");
-  connectButton.position(10, 10);
-  connectButton.mousePressed(connectToSerial);
+  let currentSpiral = "";
+  let spiralIndex = 0;
+
+  // PROCESSING HEADLINES IN PAIRS
+  for(let i = 0; i < headlines.length; i++) {
+    if (currentSpiral === "") {
+      currentSpiral = headlines[i];
+    } else {
+      // If combined length is too long, create new spiral
+      if ((currentSpiral + "           " + headlines[i]).length > 200) { // Adjust 200 to your preferred charactermax length
+        // Create spiral with single headline
+        let spiral = new SpiralText(
+          xPos,
+          yPos,
+          currentSpiral,
+          20 + (spiralIndex * 5) // 1️⃣ SPIRAL STEP: Controls how much the spiral expands or contracts
+        );
+        spiral.setShiftSpirstepSpacestep(
+          -5 + spiralIndex, // 2️⃣ ADJUST THIS NUMBER (-5) to change spiral tightness
+          spiralIndex // 3️⃣ Affects letter spacing
+        );
+        spiral.setStartRadius(100 + (spiralIndex * 30)); // 4️⃣ Controls starting point of each spiral
+        spiral.onFrameLimit();
+        spiralTexts.push(spiral);
+
+        currentSpiral = headlines[i];
+        spiralIndex++;
+      } else {
+        // Combine headlines
+        currentSpiral += "                                  " + headlines[i];
+      }
+    }
+
+    // Create final spiral if there's remaining text
+    if (i === headlines.length - 1 && currentSpiral !== "") {
+      let spiral = new SpiralText(xPos, yPos, currentSpiral, 20 + (spiralIndex * 5));
+      spiral.setShiftSpirstepSpacestep(-5 + spiralIndex, spiralIndex);
+      spiral.setStartRadius(100 + (spiralIndex * 30));
+      spiral.onFrameLimit();
+      spiralTexts.push(spiral);
+    }
+  }
+
+  noLoop(); // No need for continuous updates
+    // Remove when animating for rotation.
 }
 
 function draw() {
-  background(0, 0, 150); // Deep blue water
+  background(37, 21, 31);
+  smooth(); // Smooth edges for circular background - here or in setup?
 
-  // Center the coordinate system
-  translate(width/2, height/2);
+  // CLIP BACKGROUND: Clip everything to a circle
+  clip(() => {
+    circle(width/2, height/2, width);
+  });
 
-  // Draw three circles of circles
-  drawCircleRing(firstRadius, 0);  // Inner ring with smaller circles
-  drawCircleRing(innerRadius, 1);  // Middle ring
-  drawCircleRing(outerRadius, 2);  // Outer ring
+  textFont(font, 20);
+  fill('#0E3D4D');
 
-  // Display serial data for debugging
-  resetMatrix();  // Reset translation
-  if (sensorValues.length > 0) {
-    // fill with white text
-    fill(255);
-    noStroke();
-    text('Received Values', 10, 50);
-    text(JSON.stringify(sensorValues), 10, 70);
-  }
+  // Draw each spiral text with different colors
+  spiralTexts.forEach((spiral, index) => {
+    // Create different colors for each spiral
+    let hue = map(index, 0, headlines.length, 0, 360);
+    fill(hue, 50, 50);
+
+    spiral.setXY(width/2, height/2);
+    spiral.draw();
+  });
 }
-
-function drawCircleRing(radius, rowIndex) {
-  for (let i = 0; i < numberOfCircles; i++) {
-    // Calculate the angle (counter-clockwise)
-    const angle = (-i * TWO_PI) / numberOfCircles;
-    const x = radius * cos(angle);
-    const y = radius * sin(angle);
-
-    // Get the pressure value for this circle
-    // Index = (column * 3) + row, because data comes as [r1c1,r2c1,r3c1,r1c2,r2c2,r3c2,...]
-    const pressureIndex = (i * 3) + rowIndex;
-    const pressure = sensorValues[pressureIndex] || 0;
-
-    // Map pressure to opacity
-    const opacity = map(
-      pressure,
-      0,
-      MAX_PRESSURE,
-      MIN_OPACITY,
-      MAX_OPACITY
-    );
-
-    // Visual feedback based on pressure
-    stroke(0);
-    fill(255, 255, 255, opacity);  // White with varying opacity
-    circle(x, y, CIRCLE_SIZE);
-
-    // Optional: Add a pressure indicator
-    if (pressure > 0) {
-      // Add a colored center dot that gets brighter with pressure
-      const centerColor = map(pressure, 0, MAX_PRESSURE, 0, 255);
-      fill(centerColor, 0, 0);  // Red center that gets brighter
-      noStroke();
-      circle(x, y, CIRCLE_SIZE/4);
-    }
-  }
-}
-
-// Serial connection and processing.
-// When the Connect button is pressed, this function is called
-async function connectToSerial() {
-  // Request a port and open a connection
-  try {
-    port = await navigator.serial.requestPort();
-    await port.open({ baudRate: 9600 });
-    serial = port.readable.getReader();
-    console.log("Serial connection established"); // Debug log
-
-    // Start reading data from the serial port on loop
-    readSerial();
-  } catch (err) {
-    console.error("Error connecting to serial:", err);
-  }
-}
-
-// Continuous loop that reads data from the serial port
-async function readSerial() {
-  while (port.readable) {
-    try {
-      const { value, done } = await serial.read();
-      if (done) {
-        console.log("Serial connection closed"); // Debug log
-        serial.releaseLock();
-        break;
-      }
-
-      // Decode the data and process it
-      const data = decoder.decode(value);
-      // Add new data to our buffer
-      inputBuffer += data;
-
-      // Check if we have a complete line (ends with newline)
-      let newlineIndex = inputBuffer.indexOf('\n');
-      while (newlineIndex !== -1) {
-        // Extract the complete line
-        const line = inputBuffer.substring(0, newlineIndex).trim();
-        // Remove the processed line from the buffer
-        inputBuffer = inputBuffer.substring(newlineIndex + 1);
-
-        // Process the complete line
-        if (line) {
-          console.log("Complete line received:", line);
-          processSerialData(line);
-        }
-
-        // Look for next newline
-        newlineIndex = inputBuffer.indexOf('\n');
-      }
-    } catch (err) {
-      console.error("Error reading serial data:", err);
-      break;
-    }
-  }
-}
-
-function processSerialData(data) {
-  // Parse CSV data from Arduino
-  // Since the data is already properly formatted, just split by comma and convert to integers
-  let values = data
-    .split(",")
-    .filter(val => val.trim() !== '')
-    .map(val => parseInt(val.trim()));
-
-  // sensorValues = rows.map((row) =>
-  //   row.split(",").map((val) => parseInt(val.trim()))
-  // );
-
-  if (values.length === 108) {
-    sensorValues = values;
-    console.log("Processed values:", values); // Debug log
-  } else {
-    console.log("Incomplete data received, length:", values.length); // Debug log
-  }
-
-
-  // for (let row of rows) {
-  //   if (row.trim()) {  // Only process non-empty rows
-  //     let values = row.split(",").map(val => parseInt(val.trim()));
-  //     if (values.length === 108) {  // Make sure we have all values
-  //       sensorValues = values;
-  //     }
-  //   }
-  // }
-}
-
-// THIS DOESN'T HAVE PULLING DOWN TO 0 or any sort of data calibration.
-
-// Data format explanation:
-// The 108 values represent pressure readings arranged in a circular pattern:
-// - There are 36 positions around the circle
-// - At each position, there are 3 sensors (inner, middle, outer ring)
-// - 36 positions × 3 sensors = 108 total values
-//
-// The data comes in this format:
-// [r1c1,r2c1,r3c1, r1c2,r2c2,r3c2, ..., r1c36,r2c36,r3c36]
-// where:
-// - r1 = inner ring
-// - r2 = middle ring
-// - r3 = outer ring
-// - c1-c36 = position number around the circle
