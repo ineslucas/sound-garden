@@ -42,7 +42,7 @@ const int NUM_COLS = 36;
 // Arrays to store sensor values
 int currentValues[3][NUM_COLS];    // Current readings
 int baselineValues[3][NUM_COLS];   // Calibration baseline
-const int NUM_CALIBRATION_SAMPLES = 20; // could be increased
+const int NUM_CALIBRATION_SAMPLES = 50; // could be increased
 
 // Helper function to determine which multiplexer and channel to use for a given column
 struct MuxInfo {
